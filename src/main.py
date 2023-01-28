@@ -14,7 +14,8 @@ app = FastAPI(
     redoc_url=None
 )
 
-app.include_router(users.router, prefix='/api/v1', tags=['users'])
+
+app.include_router(users.router, prefix='/api/v1')
 
 
 if __name__ == '__main__':

@@ -33,6 +33,7 @@ class AppSettings(BaseSettings):
                                  'postgres@localhost:5432/postgres')
     project_host: str = '0.0.0.0'
     project_port: int = 8000
+    token_expires_min = 60
 
     class Config:
         env_file = '.env'
