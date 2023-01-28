@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from core.config import app_settings
 from db import Base
+from models import users
 
 config = context.config
 config.set_main_option('sqlalchemy.url', app_settings.database_dsn)
