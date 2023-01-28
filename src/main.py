@@ -3,7 +3,7 @@ import multiprocessing
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
-from api import users
+from api import files, users
 from core.config import StandaloneApplication, app_settings
 
 app = FastAPI(
@@ -16,6 +16,7 @@ app = FastAPI(
 
 
 app.include_router(users.router, prefix='/api/v1')
+app.include_router(files.router, prefix='/api/v1', tags=['Files'])
 
 
 if __name__ == '__main__':

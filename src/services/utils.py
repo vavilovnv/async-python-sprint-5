@@ -6,6 +6,7 @@ from string import ascii_letters
 
 APP_ITERS = 100_000
 STR_LENGTH = 12
+DEFAULT_FOLDER = 'user_files'
 
 
 def hash_password(password: str, hash_salt: str = None):

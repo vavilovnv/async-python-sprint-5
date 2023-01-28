@@ -1,15 +1,12 @@
-from fastapi.security import OAuth2PasswordBearer
-
-from models.users import Tokens, Users
+from models.users import Token, User
 from schemas.users import UserCreate
 
 from .base import RepositoryDBToken, RepositoryDBUser
 
 
-class RepositoryUser(RepositoryDBUser[Users, UserCreate]):
+class RepositoryUser(RepositoryDBUser[User, UserCreate]):
     pass
 
 
-user_crud = RepositoryUser(Users)
-token_crud = RepositoryDBToken(Tokens)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="v1/auth")
+user_crud = RepositoryUser(User)
+token_crud = RepositoryDBToken(Token)
