@@ -15,7 +15,7 @@ async def get_session() -> AsyncSession:
 def create_engine() -> AsyncEngine:
     return create_async_engine(
         app_settings.database_dsn,
-        echo=False,
+        echo=True, # TODO убрать перед ревью
         future=True
     )
 
