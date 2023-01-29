@@ -2,6 +2,7 @@ import multiprocessing
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+from fastapi_pagination import add_pagination
 
 from api import files, users
 from core.config import StandaloneApplication, app_settings
@@ -14,9 +15,8 @@ app = FastAPI(
     redoc_url=None
 )
 
-
 app.include_router(users.router, prefix='/api/v1')
-app.include_router(files.router, prefix='/api/v1', tags=['Files'])
+app.include_router(files.router, prefix='/api/v1/files', tags=['Files'])
 
 
 if __name__ == '__main__':

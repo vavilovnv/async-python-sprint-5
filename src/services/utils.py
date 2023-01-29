@@ -1,5 +1,8 @@
 import random
 
+from pathlib import Path
+from uuid import UUID
+
 from hashlib import pbkdf2_hmac
 from string import ascii_letters
 
@@ -19,3 +22,17 @@ def hash_password(password: str, hash_salt: str = None):
         APP_ITERS
     )
     return f"{hash_salt}${derived_key.hex()}"
+
+
+def validate_path(path: str) -> Path | None:
+    try:
+        return Path(path)
+    except Exception as error:
+        pass
+
+
+def validate_uuid(id: str) -> UUID | None:
+    try:
+        return UUID(id, version=1)
+    except Exception as error:
+        pass

@@ -1,13 +1,15 @@
+import os
 import time
 
 import aiofiles
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Generic, Optional, Type, TypeVar
+from typing import Generic, Type, TypeVar
 
 from fastapi import File, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, exc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +19,7 @@ from core.config import app_settings
 from db import Base
 from models.users import User, Token
 
-from .utils import DEFAULT_FOLDER, hash_password
+from .utils import DEFAULT_FOLDER, hash_password, validate_path, validate_uuid
 
 
 ModelType = TypeVar('ModelType', bound=Base)
@@ -63,7 +65,7 @@ class RepositoryDBUser(Generic[ModelType, CreateSchemaType]):
             self,
             db: AsyncSession,
             login: str
-    ) -> Optional[ModelType]:
+    ) -> ModelType | None:
         statement = select(self._user_model).where(
             self._user_model.login == login
         )
@@ -74,7 +76,7 @@ class RepositoryDBUser(Generic[ModelType, CreateSchemaType]):
             self,
             db: AsyncSession,
             token: str
-    ) -> Optional[ModelType]:
+    ) -> ModelType | None:
         query = select(self._user_model).join(Token).where(
             and_(Token.token == token, Token.expires > datetime.now())
         )
@@ -121,7 +123,7 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
     ) -> None:
         file.file.seek(0)
         content = file.file.read()
-        user_folder = DEFAULT_FOLDER + f'/{user.name}'
+        user_folder = DEFAULT_FOLDER + f'/{user.login}'
         if path:
             user_folder = f'{user_folder}/{path}'
         folder = Path(user_folder)
@@ -148,7 +150,7 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
             name=file.filename,
             path=path,
             size=size,
-            downloadable=True,
+            is_downloadable=True,
             author=user.id
         )
         db.add(db_obj)
@@ -162,7 +164,7 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
             )
         return db_obj
 
-    async def create(
+    async def upload_file(
             self,
             db: AsyncSession,
             user: User,
@@ -170,21 +172,85 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
             file: UploadFile = File(),
     ) -> dict:
         file_size = len(await file.read())
-        result = await self.save_file(
+        await self.save_file(
             user=user,
             path=path,
             file=file,
         )
-        if not isinstance(result, Exception):
-            await self.create_in_db(
+        db_obj = await self.create_in_db(
+            db=db,
+            user=user,
+            path=path,
+            file=file,
+            size=file_size
+        )
+        return jsonable_encoder(db_obj)
+
+    async def get_files_list(
+            self,
+            db: AsyncSession,
+            user: User,
+            skip=0,
+            limit=100
+    ) -> list[ModelType]:
+        statement = select(self._model).where(
+            self._model.author == user.id
+            ).offset(skip).limit(limit)
+        result = await db.execute(statement=statement)
+        return result.scalars().all()
+
+    async def get_file_by_path(
+            self,
+            db: AsyncSession,
+            user: User,
+            path: Path
+    ) -> File:
+        file_path = Path(path)
+        statement = select(self._model).where(
+            and_(
+                self._model.path == str(file_path.parent),
+                self._model.name == file_path.name,
+                self._model.author == user.id
+            )
+        )
+        result = await db.scalar(statement=statement)
+        if result:
+            path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}/{result.name}'
+            if os.path.exists(path) and os.path.isfile(path):
+                return FileResponse(path=path)
+
+    async def get_file_by_id(
+            self,
+            db: AsyncSession,
+            user: User,
+            id: str
+    ) -> File:
+        statement = select(self._model).where(self._model.id == id)
+        result = await db.scalar(statement=statement)
+        if result:
+            path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}/{result.name}'
+            if os.path.exists(path) and os.path.isfile(path):
+                return FileResponse(path=path)
+
+    async def download_file(
+            self,
+            db: AsyncSession,
+            user: User,
+            path_or_id: str
+    ) -> File:
+        if validate_uuid(path_or_id):
+            return await self.get_file_by_id(
                 db=db,
                 user=user,
-                path=path,
-                file=file,
-                size=file_size,
+                id=path_or_id
             )
-            return {
-                'Info': f'Successfully uploaded {file.filename}',
-                'Filesize': f'{"{:.3f}".format(file_size / 1024)}kb',
-            }
-        return {'Error': str(result)}
+        if validate_path(path_or_id):
+            return await self.get_file_by_path(
+                db=db,
+                user=user,
+                path=Path(path_or_id)
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found."
+        )

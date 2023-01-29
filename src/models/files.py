@@ -21,4 +21,4 @@ class File(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
-    user = relationship('User', back_populates='files')
+    user = relationship('User', back_populates='file')
