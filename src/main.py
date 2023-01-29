@@ -2,7 +2,6 @@ import multiprocessing
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
-from fastapi_pagination import add_pagination
 
 from api import files, users
 from core.config import StandaloneApplication, app_settings

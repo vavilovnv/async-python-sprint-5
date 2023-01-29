@@ -22,8 +22,10 @@ class User(Base):
         default=True,
         nullable=False,
     )
-    files = relationship(
-        'File', back_populates="user", passive_deletes=True
+    file = relationship(
+        'File',
+        back_populates="user",
+        passive_deletes=True
     )
 
 
