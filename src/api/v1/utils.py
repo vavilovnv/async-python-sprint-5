@@ -2,14 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from db import get_session
-from services.users import user_crud
-
-from services.utils import hash_password
-
-
-def validate_password(hashed_password: str, password: str):
-    hash_salt = hashed_password.split("$")[0]
-    return hashed_password == hash_password(password, hash_salt)
+from .users import user_crud
 
 
 async def current_user(

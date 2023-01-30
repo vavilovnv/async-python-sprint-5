@@ -3,7 +3,7 @@ import multiprocessing
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
-from api import files, users
+from api import files, ping_services, users
 from core.config import StandaloneApplication, app_settings
 
 app = FastAPI(
@@ -14,7 +14,8 @@ app = FastAPI(
     redoc_url=None
 )
 
-app.include_router(users.router, prefix='/api/v1')
+app.include_router(ping_services.router, prefix="/api/v1", tags=["Services"])
+app.include_router(users.router, prefix='/api/v1', tags=["Users"])
 app.include_router(files.router, prefix='/api/v1/files', tags=['Files'])
 
 

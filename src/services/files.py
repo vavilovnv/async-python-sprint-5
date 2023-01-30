@@ -1,11 +1,11 @@
 from models.files import File
-from schemas.files import FileCreate
+from schemas.files import FileInDB, FileCreate
 
 from .base import RepositoryDBFile
 
 
-class RepositoryFile(RepositoryDBFile[File, FileCreate]):
+class RepositoryFiles(RepositoryDBFile[File, FileCreate]):
     pass
 
 
-files_crud = RepositoryFile(File)
+files_crud = RepositoryFiles(File, FileInDB)

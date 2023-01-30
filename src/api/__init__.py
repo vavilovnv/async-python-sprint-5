@@ -1,1 +1,1 @@
-from .v1 import files, users
+from .v1 import files, ping_services, users
