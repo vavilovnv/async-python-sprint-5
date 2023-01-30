@@ -3,13 +3,16 @@ import time
 
 import aiofiles
 
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
+from io import BytesIO
 from pathlib import Path
-from typing import Generic, Type, TypeVar
+from typing import Generic, Type, TypeVar, Any
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import File, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, exc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,21 +25,40 @@ from models.users import User, Token
 from .utils import DEFAULT_FOLDER, hash_password, validate_path, validate_uuid
 
 
+class UserRepository(ABC):
+    @abstractmethod
+    def add_user(self, *args, **kwargs):
+        raise NotImplementedError
+
+
+class FileRepository(ABC):
+    @abstractmethod
+    def upload_file(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def download_file(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_files_list(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def search(self, *args, **kwargs):
+        raise NotImplementedError
+
+
 ModelType = TypeVar('ModelType', bound=Base)
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
+FileSchemaType = TypeVar("FileSchemaType", bound=BaseModel)
 
 
-class RepositoryDBUser(Generic[ModelType, CreateSchemaType]):
+class RepositoryDBUser(UserRepository, Generic[ModelType, CreateSchemaType]):
     def __init__(self, user_model: Type[ModelType]):
         self._user_model = user_model
 
-    async def get_ping_db(self, db: AsyncSession) -> dict[str, str]:
-        start = time.time()
-        statement = select(self._user_model)
-        await db.execute(statement=statement)
-        return {'ping_db': '{:.5f}'.format(time.time() - start)}
-
-    async def add(
+    async def add_user(
             self,
             db: AsyncSession,
             obj_in: CreateSchemaType
@@ -111,9 +133,16 @@ class RepositoryDBToken(Generic[ModelType, CreateSchemaType]):
         return db_obj
 
 
-class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
-    def __init__(self, model: Type[ModelType]) -> None:
+class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
+    def __init__(self, model: Type[ModelType], schema: Type[FileSchemaType]) -> None:
         self._model = model
+        self._schema = schema
+
+    async def get_ping_db(self, db: AsyncSession) -> dict[str, str]:
+        start = time.time()
+        statement = select(self._model)
+        await db.execute(statement=statement)
+        return {'ping_db': '{:.5f}'.format(time.time() - start)}
 
     @staticmethod
     async def save_file(
@@ -137,6 +166,42 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f'File not saved: {error}'
             )
+
+    @staticmethod
+    async def get_folder_archive(
+            user: User,
+            path: str,
+            compression_type: str
+    ):
+        folder = f'{DEFAULT_FOLDER}/{user.login}/{path}'
+        files = list(Path(folder).iterdir())
+        zip_file = f'{str(datetime.now())}.{compression_type}'
+        zip_io = BytesIO()
+        with ZipFile(zip_io, mode='w', compression=ZIP_DEFLATED) as f:
+            for file in files:
+                _, file_name = os.path.split(file)
+                f.write(file, file_name)
+        return StreamingResponse(
+            iter([zip_io.getvalue()]),
+            media_type="application/x-zip-compressed",
+            headers={'Content-Disposition': f'attachment filename={zip_file}'}
+        )
+
+    @staticmethod
+    async def get_file_archive(
+            path: str,
+            compression_type: str
+    ):
+        _, file_name = os.path.split(path)
+        zip_file = f'{str(datetime.now())}.{compression_type}'
+        zip_io = BytesIO()
+        with ZipFile(zip_io, mode='w', compression=ZIP_DEFLATED) as f:
+            f.write(path, file_name)
+        return StreamingResponse(
+            iter([zip_io.getvalue()]),
+            media_type='application/x-zip-compressed',
+            headers={'Content-Disposition': f'attachment; filename={zip_file}'}
+        )
 
     async def create_in_db(
             self,
@@ -203,7 +268,8 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
             self,
             db: AsyncSession,
             user: User,
-            path: Path
+            path: Path,
+            compression_type: str
     ) -> File:
         file_path = Path(path)
         statement = select(self._model).where(
@@ -215,42 +281,78 @@ class RepositoryDBFile(Generic[ModelType, CreateSchemaType]):
         )
         result = await db.scalar(statement=statement)
         if result:
-            path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}/{result.name}'
-            if os.path.exists(path) and os.path.isfile(path):
-                return FileResponse(path=path)
+            file_name = f'{DEFAULT_FOLDER}/{user.login}/{result.path}/{result.name}'
+            if os.path.exists(file_name) and os.path.isfile(file_name):
+                if compression_type:
+                    return await self.get_file_archive(
+                        result.name,
+                        compression_type
+                    )
+                return FileResponse(path=file_name)
 
     async def get_file_by_id(
             self,
             db: AsyncSession,
             user: User,
-            id: str
+            id: str,
+            compression_type: str
     ) -> File:
         statement = select(self._model).where(self._model.id == id)
         result = await db.scalar(statement=statement)
         if result:
-            path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}/{result.name}'
-            if os.path.exists(path) and os.path.isfile(path):
-                return FileResponse(path=path)
+            path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}'
+            file_name = f'{path}/{result.name}'
+            if os.path.exists(file_name) and os.path.isfile(file_name):
+                if compression_type:
+                    return await self.get_file_archive(
+                        file_name,
+                        compression_type
+                    )
+                return FileResponse(path=file_name)
 
     async def download_file(
             self,
             db: AsyncSession,
             user: User,
-            path_or_id: str
+            path_or_id: str,
+            compression_type: str
     ) -> File:
         if validate_uuid(path_or_id):
             return await self.get_file_by_id(
                 db=db,
                 user=user,
-                id=path_or_id
+                id=path_or_id,
+                compression_type=compression_type
             )
         if validate_path(path_or_id):
             return await self.get_file_by_path(
                 db=db,
                 user=user,
-                path=Path(path_or_id)
+                path=Path(path_or_id),
+                compression_type=compression_type
             )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found."
         )
+
+    async def search(
+            self,
+            db: AsyncSession,
+            user: User,
+            path,
+            ext,
+            order,
+            limit
+    ) -> list[dict[str, Any]]:
+        statement = select(self._model).where(self._model.author == user.id)
+        if path:
+            statement = statement.where(self._model.path == path)
+        if ext:
+            statement = statement.where(self._model.name.ilike(f'%{ext}%'))
+        if limit:
+            statement = statement.limit(limit)
+        statement = statement.order_by(order)
+        results = await db.execute(statement=statement)
+        files = results.scalars().all()
+        return [self._schema.from_orm(file).dict() for file in files]

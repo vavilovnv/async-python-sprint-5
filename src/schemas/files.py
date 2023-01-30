@@ -30,3 +30,8 @@ class FileInDB(FileBase):
 class FilesList(BaseModel):
     account_id: UUID1
     files: list[FileInDB]
+
+
+class FileSearchMatches(BaseModel):
+    matches: list[FileInDB]
+
