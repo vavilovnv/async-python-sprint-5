@@ -1,4 +1,4 @@
-import multiprocessing
+import uvicorn
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
@@ -6,7 +6,7 @@ from fastapi_cache import caches, close_caches
 from fastapi_cache.backends.redis import CACHE_KEY, RedisCacheBackend
 
 from api import files, services, users
-from core.config import StandaloneApplication, app_settings
+from core.config import app_settings
 
 app = FastAPI(
     title=app_settings.app_title,
@@ -36,9 +36,9 @@ app.include_router(files.router, prefix='/api/v1/files', tags=['Files'])
 
 
 if __name__ == '__main__':
-    options = {
-        "bind": f'{app_settings.project_host}:{app_settings.project_port}',
-        "workers": multiprocessing.cpu_count(),
-        "worker_class": "uvicorn.workers.UvicornWorker",
-    }
-    StandaloneApplication('main:app', options).run()
+    uvicorn.run(
+        'app',
+        host=app_settings.project_host,
+        port=app_settings.project_port,
+        log_level='info'
+    )
