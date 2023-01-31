@@ -58,7 +58,7 @@ async def get_files_list(
         db: AsyncSession = Depends(get_session),
         user: User = Depends(current_user),
         cache: RedisCacheBackend = Depends(redis_cache)
-) -> FilesList:
+) -> FilesList | dict:
     logger.info('Getting a file list.')
     result = await get_cache(cache, f'files_{user.id}')
     if not result:
