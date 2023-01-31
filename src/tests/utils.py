@@ -7,3 +7,6 @@ REDIS_KEY = 'PYTEST'
 TEST_USER1 = "test_user"
 TEST_USER2 = "test_user2"
 TEST_PASSWORD = "password"
+TEST_FILE = 'test_file.txt'
+TEST_FOLDER = 'test_folder'
+UPLOAD_FILES = {}
