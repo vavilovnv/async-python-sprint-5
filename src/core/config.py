@@ -33,7 +33,9 @@ class AppSettings(BaseSettings):
                                  'postgres@localhost:5432/postgres')
     project_host: str = '0.0.0.0'
     project_port: int = 8000
-    token_expires_min = 60
+    token_expires_min: int = 120
+    redis_host: str = '127.0.0.1'
+    redis_port: int = 6379
 
     class Config:
         env_file = '.env'

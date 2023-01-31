@@ -1,17 +1,14 @@
-import logging.config
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.logger import LOGGING
+from core.logger import logger
 from db import get_session
 from schemas import users as schema_users
 from services.users import token_crud, user_crud
 
 from services.utils import validate_password
 
-logging.config.dictConfig(LOGGING)
-logger = logging.getLogger('fastapi_filestorage_logger')
 
 router = APIRouter()
 
@@ -49,7 +46,7 @@ async def auth_user(
                 form_data.password
             )):
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Wrong login or password."
         )
     logger.info('Creating token for %s', form_data.username)

@@ -138,11 +138,11 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         self._model = model
         self._schema = schema
 
-    async def get_ping_db(self, db: AsyncSession) -> dict[str, str]:
+    async def get_ping_db(self, db: AsyncSession) -> float:
         start = time.time()
         statement = select(self._model)
         await db.execute(statement=statement)
-        return {'ping_db': '{:.5f}'.format(time.time() - start)}
+        return time.time() - start
 
     @staticmethod
     async def save_file(
