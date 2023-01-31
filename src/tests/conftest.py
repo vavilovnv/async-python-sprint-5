@@ -17,7 +17,8 @@ from cache.utils import redis_cache
 from db import Base, get_session
 from main import app
 
-from .utils import BASE_URL, REDIS_KEY, REDIS_URL, TEST_DB_NAME, TEST_PASSWORD, TEST_USER2, database_dsn
+from .utils import (BASE_URL, REDIS_KEY, REDIS_URL, TEST_DB_NAME,
+                    TEST_PASSWORD, TEST_USER2, database_dsn)
 
 
 @pytest_asyncio.fixture(scope='function')

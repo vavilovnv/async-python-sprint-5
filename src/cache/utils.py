@@ -26,6 +26,7 @@ async def get_cache(cache: BaseCacheBackend, redis_key: str) -> dict | None:
     result = await cache.get(redis_key)
     if result:
         return json.loads(result)
+    return None
 
 
 async def get_key_by_pattern(
@@ -49,9 +50,8 @@ async def ping_cache(cache: BaseCacheBackend) -> float | str:
     start_time = time.time()
     await cache.set(key=key, value=value, expire=5)
     get_value = await cache.get(key)
-    perf_time = time.time() - start_time
     if value == get_value:
-        return perf_time
+        return time.time() - start_time
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Failed to get test value from cache."

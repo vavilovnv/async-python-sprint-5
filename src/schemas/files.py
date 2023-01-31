@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, UUID1
+from pydantic import UUID1, BaseModel
 
 
 class FileBase(BaseModel):
@@ -34,4 +34,3 @@ class FilesList(BaseModel):
 
 class FileSearchMatches(BaseModel):
     matches: list[FileInDB]
-

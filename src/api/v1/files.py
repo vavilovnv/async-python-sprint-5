@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import (APIRouter, Depends, File, HTTPException, Query,
+                     UploadFile, status)
 from fastapi.responses import FileResponse
 from fastapi_cache.backends.redis import RedisCacheBackend
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cache.utils import get_cache, get_key_by_pattern, redis_cache, set_cache
 from core.logger import logger
-from cache.utils import redis_cache, set_cache, get_cache, get_key_by_pattern
 from db.db import get_session
 from models.users import User
-from schemas.files import FileInDB, FilesList, FileSearchMatches
+from schemas.files import FileInDB, FileSearchMatches, FilesList
 from services.files import files_crud
 
 from .utils import current_user
@@ -103,7 +104,7 @@ async def download_file_or_folder(
     if compression_type and compression_type not in ('zip', 'tar', '7z'):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'Wrong compression type.'
+            detail='Wrong compression type.'
         )
     if path_to_folder:
         return await files_crud.get_folder_archive(

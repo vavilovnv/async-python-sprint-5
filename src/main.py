@@ -19,7 +19,9 @@ app = FastAPI(
 
 @app.on_event('startup')
 async def on_startup() -> None:
-    rc = RedisCacheBackend(f'redis://{app_settings.redis_host}:{app_settings.redis_port}')
+    rc = RedisCacheBackend(
+        f'redis://{app_settings.redis_host}:{app_settings.redis_port}'
+    )
     caches.set(CACHE_KEY, rc)
 
 

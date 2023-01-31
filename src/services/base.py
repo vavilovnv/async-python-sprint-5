@@ -1,15 +1,13 @@
 import os
 import time
-
-import aiofiles
-
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
-from typing import Generic, Type, TypeVar, Any
+from typing import Any, Generic, Type, TypeVar
 from zipfile import ZIP_DEFLATED, ZipFile
 
+import aiofiles
 from fastapi import File, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, StreamingResponse
@@ -20,7 +18,7 @@ from sqlalchemy.future import select
 
 from core.config import app_settings
 from db import Base
-from models.users import User, Token
+from models.users import Token, User
 
 from .utils import DEFAULT_FOLDER, hash_password, validate_path, validate_uuid
 
@@ -134,7 +132,11 @@ class RepositoryDBToken(Generic[ModelType, CreateSchemaType]):
 
 
 class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
-    def __init__(self, model: Type[ModelType], schema: Type[FileSchemaType]) -> None:
+    def __init__(
+            self,
+            model: Type[ModelType],
+            schema: Type[FileSchemaType]
+    ) -> None:
         self._model = model
         self._schema = schema
 
@@ -260,7 +262,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
     ) -> list[ModelType]:
         statement = select(self._model).where(
             self._model.author == user.id
-            ).offset(skip).limit(limit)
+        ).offset(skip).limit(limit)
         result = await db.execute(statement=statement)
         return result.scalars().all()
 
@@ -280,15 +282,24 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
             )
         )
         result = await db.scalar(statement=statement)
-        if result:
-            file_name = f'{DEFAULT_FOLDER}/{user.login}/{result.path}/{result.name}'
-            if os.path.exists(file_name) and os.path.isfile(file_name):
-                if compression_type:
-                    return await self.get_file_archive(
-                        result.name,
-                        compression_type
-                    )
-                return FileResponse(path=file_name)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='File not found.'
+            )
+        file_name = (f'{DEFAULT_FOLDER}/{user.login}/'
+                     f'{result.path}/{result.name}')
+        if os.path.exists(file_name) and os.path.isfile(file_name):
+            if compression_type:
+                return await self.get_file_archive(
+                    result.name,
+                    compression_type
+                )
+            return FileResponse(path=file_name)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='File not found.'
+        )
 
     async def get_file_by_id(
             self,
@@ -299,16 +310,24 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
     ) -> File:
         statement = select(self._model).where(self._model.id == id)
         result = await db.scalar(statement=statement)
-        if result:
-            path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}'
-            file_name = f'{path}/{result.name}'
-            if os.path.exists(file_name) and os.path.isfile(file_name):
-                if compression_type:
-                    return await self.get_file_archive(
-                        file_name,
-                        compression_type
-                    )
-                return FileResponse(path=file_name)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='File not found.'
+            )
+        path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}'
+        file_name = f'{path}/{result.name}'
+        if os.path.exists(file_name) and os.path.isfile(file_name):
+            if compression_type:
+                return await self.get_file_archive(
+                    file_name,
+                    compression_type
+                )
+            return FileResponse(path=file_name)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='File not found.'
+        )
 
     async def download_file(
             self,

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, UUID1, UUID4, validator
+from pydantic import UUID1, UUID4, BaseModel, Field
 
 
 class UserBase(BaseModel):
@@ -31,7 +31,3 @@ class UserToken(BaseModel):
     class Config:
         orm_model = True
         allow_population_by_field_name = True
-
-        @validator('token')
-        def token_to_hex(cls, value):
-            return value.hex

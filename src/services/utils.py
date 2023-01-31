@@ -1,10 +1,8 @@
 import random
-
 from hashlib import pbkdf2_hmac
 from pathlib import Path
 from string import ascii_letters
 from uuid import UUID
-
 
 APP_ITERS = 100_000
 STR_LENGTH = 12
@@ -14,20 +12,22 @@ DEFAULT_FOLDER = 'user_files'
 def validate_path(path: str) -> Path | None:
     try:
         return Path(path)
-    except Exception as error:
+    except Exception:
         pass
 
 
 def validate_uuid(id: str) -> UUID | None:
     try:
         return UUID(id, version=1)
-    except Exception as error:
+    except Exception:
         pass
 
 
 def hash_password(password: str, hash_salt: str = None):
     if hash_salt is None:
-        hash_salt = "".join(random.choice(ascii_letters) for _ in range(STR_LENGTH))
+        hash_salt = "".join(
+            random.choice(ascii_letters) for _ in range(STR_LENGTH)
+        )
     derived_key = pbkdf2_hmac(
         'sha256',
         password.encode(),

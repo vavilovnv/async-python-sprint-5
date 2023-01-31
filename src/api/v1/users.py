@@ -6,9 +6,7 @@ from core.logger import logger
 from db import get_session
 from schemas import users as schema_users
 from services.users import token_crud, user_crud
-
 from services.utils import validate_password
-
 
 router = APIRouter()
 
