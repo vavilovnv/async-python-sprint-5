@@ -1,4 +1,4 @@
-TEST_DB_NAME = "test_db"
+TEST_DB_NAME = 'test_db'
 database_dsn = (f'postgresql+asyncpg://postgres:'
                 f'postgres@localhost:5432/{TEST_DB_NAME}')
 BASE_URL = 'http://127.0.0.1'

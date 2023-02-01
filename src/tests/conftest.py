@@ -35,25 +35,34 @@ def event_loop() -> Generator[AbstractEventLoop, None, None]:
     loop.close()
 
 
-async def create_test_db() -> None:
-    user, password, database = 'postgres', 'postgres', TEST_DB_NAME
+async def create_test_db(database_name: str) -> asyncpg.Connection:
+    user, password = 'postgres', 'postgres'
     try:
-        await asyncpg.connect(database=database, user=user, password=password)
+        return await asyncpg.connect(
+            database=database_name,
+            user=user,
+            password=password
+        )
     except asyncpg.InvalidCatalogNameError:
         conn = await asyncpg.connect(
             database='postgres',
             user=user,
             password=password
         )
-        sql_command = text(f'CREATE DATABASE "{database}" OWNER "{user}"')
+        sql_command = (f'CREATE DATABASE "{database_name}" '
+                       f'OWNER "postgres" ENCODING "utf8"')
         await conn.execute(sql_command)
         await conn.close()
-        await asyncpg.connect(database=database, user=user, password=password)
+        return await asyncpg.connect(
+            database=database_name,
+            user=user,
+            password=password
+        )
 
 
 @pytest_asyncio.fixture(scope="module")
 async def async_session() -> AsyncGenerator[AsyncSession, None]:
-    await create_test_db()
+    await create_test_db(TEST_DB_NAME)
     engine = create_async_engine(database_dsn, echo=False, future=True)
     session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with engine.begin() as conn:
