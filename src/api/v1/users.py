@@ -21,8 +21,8 @@ async def register_user(
     user: schema_users.UserCreate,
     db: AsyncSession = Depends(get_session)
 ) -> schema_users.UserID:
-    logger.info('Registering a new user.')
     answer = await user_crud.add_user(db=db, obj_in=user)
+    logger.info('New user %s registered.', answer.login)
     return schema_users.UserID(id=answer.id, login=answer.login)
 
 

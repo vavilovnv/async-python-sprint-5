@@ -1,3 +1,6 @@
+from fastapi_cache import caches
+from fastapi_cache.backends.redis import RedisCacheBackend
+
 TEST_DB_NAME = 'test_db'
 database_dsn = (f'postgresql+asyncpg://postgres:'
                 f'postgres@localhost:5432/{TEST_DB_NAME}')
@@ -10,3 +13,7 @@ TEST_PASSWORD = "password"
 TEST_FILE = 'test_file.txt'
 TEST_FOLDER = 'test_folder'
 UPLOAD_FILES = {}
+
+
+def get_cache_override() -> RedisCacheBackend:
+    return caches.get(REDIS_KEY)

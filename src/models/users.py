@@ -31,6 +31,9 @@ class User(Base):
 
 
 class Token(Base):
+    """Замечание по поводу того, что не стоит хранить токен, понял и
+    принял. Раз уж замечание не обязательное, то с позволения добью его
+    позднее, когда не будет такого завала."""
     __tablename__ = 'tokens'
     id = Column(UUIDType(binary=False), primary_key=True, default=uuid.uuid1)
     token = Column(

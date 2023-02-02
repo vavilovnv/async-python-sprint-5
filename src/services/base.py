@@ -20,7 +20,7 @@ from core.config import app_settings
 from db import Base
 from models.users import Token, User
 
-from .utils import DEFAULT_FOLDER, hash_password, validate_path, validate_uuid
+from .utils import DEFAULT_FOLDER, hash_password, validate_uuid
 
 
 class UserRepository(ABC):
@@ -140,9 +140,10 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         self._model = model
         self._schema = schema
 
-    async def get_ping_db(self, db: AsyncSession) -> float:
+    @staticmethod
+    async def get_ping_db(db: AsyncSession) -> float:
         start = time.time()
-        statement = select(self._model)
+        statement = select(1)
         await db.execute(statement=statement)
         return time.time() - start
 
@@ -152,30 +153,31 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
             path: str = '',
             file: UploadFile = File(),
     ) -> None:
-        file.file.seek(0)
-        content = file.file.read()
-        user_folder = DEFAULT_FOLDER + f'/{user.login}'
+        user_folder = os.path.join(DEFAULT_FOLDER, user.login)
         if path:
-            user_folder = f'{user_folder}/{path}'
+            user_folder = os.path.join(user_folder, path)
         folder = Path(user_folder)
         try:
             if not Path.exists(folder):
                 Path(folder).mkdir(parents=True, exist_ok=True)
             async with aiofiles.open(Path(folder, file.filename), 'wb') as f:
-                await f.write(content)
+                while content := await file.read(1024):
+                    await f.write(content)
         except Exception as error:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f'File not saved: {error}'
             )
+        finally:
+            await file.close()
 
     @staticmethod
     async def get_folder_archive(
             user: User,
             path: str,
             compression_type: str
-    ):
-        folder = f'{DEFAULT_FOLDER}/{user.login}/{path}'
+    ) -> StreamingResponse:
+        folder = os.path.join(DEFAULT_FOLDER, user.login, path)
         files = list(Path(folder).iterdir())
         zip_file = f'{str(datetime.now())}.{compression_type}'
         zip_io = BytesIO()
@@ -270,7 +272,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
             self,
             db: AsyncSession,
             user: User,
-            path: Path,
+            path: str,
             compression_type: str
     ) -> File:
         file_path = Path(path)
@@ -283,12 +285,13 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         )
         result = await db.scalar(statement=statement)
         if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='File not found.'
-            )
-        file_name = (f'{DEFAULT_FOLDER}/{user.login}/'
-                     f'{result.path}/{result.name}')
+            return None
+        file_name = os.path.join(
+            DEFAULT_FOLDER,
+            user.login,
+            result.path,
+            result.name
+        )
         if os.path.exists(file_name) and os.path.isfile(file_name):
             if compression_type:
                 return await self.get_file_archive(
@@ -296,10 +299,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
                     compression_type
                 )
             return FileResponse(path=file_name)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='File not found.'
-        )
+        return None
 
     async def get_file_by_id(
             self,
@@ -311,12 +311,9 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         statement = select(self._model).where(self._model.id == id)
         result = await db.scalar(statement=statement)
         if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='File not found.'
-            )
-        path = f'{DEFAULT_FOLDER}/{user.login}/{result.path}'
-        file_name = f'{path}/{result.name}'
+            return None
+        path = os.path.join(DEFAULT_FOLDER, user.login, result.path)
+        file_name = os.path.join(path, result.name)
         if os.path.exists(file_name) and os.path.isfile(file_name):
             if compression_type:
                 return await self.get_file_archive(
@@ -324,10 +321,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
                     compression_type
                 )
             return FileResponse(path=file_name)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='File not found.'
-        )
+        return None
 
     async def download_file(
             self,
@@ -343,16 +337,11 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
                 id=path_or_id,
                 compression_type=compression_type
             )
-        if validate_path(path_or_id):
-            return await self.get_file_by_path(
-                db=db,
-                user=user,
-                path=Path(path_or_id),
-                compression_type=compression_type
-            )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found."
+        return await self.get_file_by_path(
+            db=db,
+            user=user,
+            path=Path(path_or_id),
+            compression_type=compression_type
         )
 
     async def search(

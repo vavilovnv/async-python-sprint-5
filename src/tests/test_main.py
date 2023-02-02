@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import pytest
 from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +10,6 @@ from .utils import (TEST_FILE, TEST_FOLDER, TEST_PASSWORD, TEST_USER1,
                     UPLOAD_FILES)
 
 
-@pytest.mark.asyncio()
 async def test_ping(
         client: AsyncClient,
         async_session: AsyncSession
@@ -25,7 +23,6 @@ async def test_ping(
     assert res['cache'] > 0
 
 
-@pytest.mark.asyncio()
 async def test_register_user(
         client: AsyncClient,
         async_session: AsyncSession
@@ -40,7 +37,6 @@ async def test_register_user(
     assert response.status_code == status.HTTP_201_CREATED
 
 
-@pytest.mark.asyncio()
 async def test_auth_user(
         client: AsyncClient,
         async_session: AsyncSession
@@ -56,7 +52,6 @@ async def test_auth_user(
     assert 'access_token' in response.json()
 
 
-@pytest.mark.asyncio()
 async def test_get_files_list_unauthorized(
         client: AsyncClient,
         async_session: AsyncSession
@@ -65,7 +60,6 @@ async def test_get_files_list_unauthorized(
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-@pytest.mark.asyncio()
 async def test_get_empty_file_list(
         client_authorized: AsyncClient,
         async_session: AsyncSession
@@ -79,7 +73,6 @@ async def test_get_empty_file_list(
     assert 'account_id' in data
 
 
-@pytest.mark.asyncio()
 async def test_upload_file_unauthorized(
         client: AsyncClient,
         async_session: AsyncSession
@@ -88,7 +81,6 @@ async def test_upload_file_unauthorized(
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-@pytest.mark.asyncio()
 async def test_upload_file(
         client_authorized: AsyncClient,
         async_session: AsyncSession
@@ -109,7 +101,6 @@ async def test_upload_file(
     UPLOAD_FILES[TEST_FILE] = data.get('id')
 
 
-@pytest.mark.asyncio()
 async def test_get_file_list(
         client_authorized: AsyncClient,
         async_session: AsyncSession
@@ -124,7 +115,6 @@ async def test_get_file_list(
     assert file['name'] == TEST_FILE
 
 
-@pytest.mark.asyncio()
 async def test_download_file_unauthorized(
         client: AsyncClient,
         async_session: AsyncSession
@@ -133,7 +123,6 @@ async def test_download_file_unauthorized(
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-@pytest.mark.asyncio()
 async def test_download_file(
         client_authorized: AsyncClient,
         async_session: AsyncSession
@@ -145,7 +134,6 @@ async def test_download_file(
     assert response.status_code == status.HTTP_200_OK
 
 
-@pytest.mark.asyncio()
 async def test_download_zip_file(
         client_authorized: AsyncClient,
         async_session: AsyncSession
@@ -157,7 +145,6 @@ async def test_download_zip_file(
     assert response.status_code == status.HTTP_200_OK
 
 
-@pytest.mark.asyncio()
 async def test_search_file_unauthorized(
         client: AsyncClient,
         async_session: AsyncSession
@@ -166,7 +153,6 @@ async def test_search_file_unauthorized(
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-@pytest.mark.asyncio()
 async def test_file_search(
         client_authorized: AsyncClient,
         async_session: AsyncSession

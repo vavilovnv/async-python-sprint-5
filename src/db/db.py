@@ -15,14 +15,14 @@ async def get_session() -> AsyncSession:
 def create_engine() -> AsyncEngine:
     return create_async_engine(
         app_settings.database_dsn,
-        echo=True,  # TODO отключить перед ревью
+        echo=app_settings.echo_queries,
         future=True
     )
 
 
 def create_sessionmaker(
         bind_engine: Union[AsyncEngine, AsyncConnection]
-) -> Callable[..., AsyncSession]:
+) -> Callable[..., sessionmaker]:
     return sessionmaker(
         bind=bind_engine,
         autoflush=False,

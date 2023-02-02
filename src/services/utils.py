@@ -1,6 +1,5 @@
 import random
 from hashlib import pbkdf2_hmac
-from pathlib import Path
 from string import ascii_letters
 from uuid import UUID
 
@@ -9,17 +8,10 @@ STR_LENGTH = 12
 DEFAULT_FOLDER = 'user_files'
 
 
-def validate_path(path: str) -> Path | None:
-    try:
-        return Path(path)
-    except Exception:
-        pass
-
-
 def validate_uuid(id: str) -> UUID | None:
     try:
         return UUID(id, version=1)
-    except Exception:
+    except ValueError:
         pass
 
 

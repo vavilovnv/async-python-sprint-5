@@ -35,8 +35,7 @@ async def upload_file(
     cache: RedisCacheBackend = Depends(redis_cache)
 ) -> FileInDB:
     logger.info('Uploading a new file.')
-    cache_exists = await cache.exists(f'files_{user.id}')
-    if cache_exists:
+    if await cache.exists(f'files_{user.id}'):
         await cache.delete(f'files_{user.id}')
     keys = await get_key_by_pattern(cache, pattern=f'search-user:{user.id}*')
     for key in keys:
@@ -112,12 +111,18 @@ async def download_file_or_folder(
             path=path_to_folder,
             compression_type=compression_type
         )
-    return await files_crud.download_file(
+    file = await files_crud.download_file(
         db=db,
         user=user,
         path_or_id=path_or_id,
         compression_type=compression_type
     )
+    if not file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found."
+        )
+    return file
 
 
 @router.get(
