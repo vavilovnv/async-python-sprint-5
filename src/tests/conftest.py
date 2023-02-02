@@ -9,7 +9,8 @@ from fastapi import status
 from fastapi_cache import caches, close_caches
 from fastapi_cache.backends.redis import RedisCacheBackend
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
+                                    create_async_engine)
 from sqlalchemy.orm import sessionmaker
 
 from cache.utils import redis_cache
@@ -80,7 +81,11 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
 
 @pytest_asyncio.fixture(scope="session")
 async def session_maker(engine: AsyncEngine):
-    session_maker = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    session_maker = sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -90,7 +95,9 @@ async def session_maker(engine: AsyncEngine):
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
-async def async_session(session_maker: sessionmaker) -> AsyncGenerator[AsyncSession, None]:
+async def async_session(
+        session_maker: sessionmaker
+) -> AsyncGenerator[AsyncSession, None]:
     cache_redis = RedisCacheBackend(REDIS_URL)
     caches.set(REDIS_KEY, cache_redis)
     app.dependency_overrides[redis_cache] = get_cache_override

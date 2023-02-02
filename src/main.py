@@ -1,4 +1,5 @@
 import multiprocessing
+
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi_cache import caches, close_caches
