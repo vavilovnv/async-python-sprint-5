@@ -24,18 +24,10 @@ sudo docker-compose up --build -d
 * file-server - контейнер с бэкендом на fastapi
 * nginx - одноименный web-сервер
 
-
-3. Выполнить миграции
-```
-sudo docker-compose exec file-server alembic upgrade head
-```
-
 Для запуска тестов находясь в папке проекта выполнить следующие команды:
 ```
-# создать виртуальное окружение
+# создать и активировать виртуальное окружение
 python3 -m venv venv
-
-# активировать вируальное окружение
 source venv/bin/activate
 
 # установить зависимости
