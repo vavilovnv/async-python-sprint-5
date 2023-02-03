@@ -3,9 +3,15 @@ from hashlib import pbkdf2_hmac
 from string import ascii_letters
 from uuid import UUID
 
+from fastapi import status
+
 APP_ITERS = 100_000
 STR_LENGTH = 12
 DEFAULT_FOLDER = 'user_files'
+
+HTTP_400_BAD_REQUEST = status.HTTP_400_BAD_REQUEST
+HTTP_422_UNPROCESSABLE_ENTITY = status.HTTP_422_UNPROCESSABLE_ENTITY
+HTTP_413_REQUEST_ENTITY_TOO_LARGE = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
 
 
 def validate_uuid(id: str) -> UUID | None:

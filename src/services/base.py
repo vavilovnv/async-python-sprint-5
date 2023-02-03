@@ -8,7 +8,7 @@ from typing import Any, Generic, Type, TypeVar
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import aiofiles
-from fastapi import File, HTTPException, UploadFile, status
+from fastapi import File, HTTPException, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
@@ -20,7 +20,10 @@ from core.config import app_settings
 from db import Base
 from models.users import Token, User
 
-from .utils import DEFAULT_FOLDER, hash_password, validate_uuid
+from .utils import (DEFAULT_FOLDER, HTTP_400_BAD_REQUEST,
+                    HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    HTTP_422_UNPROCESSABLE_ENTITY, hash_password,
+                    validate_uuid)
 
 
 class UserRepository(ABC):
@@ -71,12 +74,12 @@ class RepositoryDBUser(UserRepository, Generic[ModelType, CreateSchemaType]):
             await db.refresh(db_obj)
         except exc.IntegrityError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=HTTP_400_BAD_REQUEST,
                 detail='Input another name.'
             )
         except exc.SQLAlchemyError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=error
             )
         return db_obj
@@ -125,7 +128,7 @@ class RepositoryDBToken(Generic[ModelType, CreateSchemaType]):
             await db.refresh(db_obj)
         except exc.SQLAlchemyError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=error
             )
         return db_obj
@@ -151,7 +154,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
     async def save_file(
             user: User,
             path: str = '',
-            file: UploadFile = File(),
+            file: UploadFile = File()
     ) -> None:
         user_folder = os.path.join(DEFAULT_FOLDER, user.login)
         if path:
@@ -160,12 +163,48 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         try:
             if not Path.exists(folder):
                 Path(folder).mkdir(parents=True, exist_ok=True)
+            """
+            Николай, ниже внес замечания по ограничению размера файла.
+            Надеюсь я верно понял задачу - мы ограничиваем загрузку файлов
+            больше предустановленного размера (я сделал 256 mb по умолчанию).
+            .
+            И еще напишу тут по поводу замечания по файлу .env_example, т.к.
+            не знаю, где это сделать, раз этот файл вам недоступен. Почему-то
+            на платформу Яндекс.практикум файл загружается в виде пустой папки
+            Во всяком случае я вижу его именно так. Но он есть в репозитарии
+            на github. Вот его содержимое:
+            PROJECT_HOST="127.0.0.1"
+            PROJECT_PORT=8080
+            DATABASE_DSN=postgresql+asyncpg://postgres:postgres@postgres-
+                            fastapi:5432/postgres
+            POSTGRES_USER=postgres
+            POSTGRES_PASSWORD=postgres
+            DB_PORTS="5432:5432"
+            CACHE_PORTS="6379:6379"
+            FS_PORTS="8080:8080"
+            WS_PORTS="80:80"
+            COMMANDS_FS="alembic upgrade head && python3 main.py"
+            MAX_FILE_SIZE=268435456
+            .
+            Дополнительно сейчас сделаю репозитарий публичным, чтобы можно было
+            увидеть этот файл:
+            https://github.com/vavilovnv/async-python-sprint-5
+            """
+            file_size, max_size = 0, app_settings.max_file_size
             async with aiofiles.open(Path(folder, file.filename), 'wb') as f:
                 while content := await file.read(1024):
+                    file_size += len(content)
+                    if file_size > max_size:
+                        os.remove(Path(folder, file.filename))
+                        raise HTTPException(
+                            status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            detail=f'File exceeds maximum size of {max_size} '
+                                   f'bytes'
+                        )
                     await f.write(content)
         except Exception as error:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=HTTP_400_BAD_REQUEST,
                 detail=f'File not saved: {error}'
             )
         finally:
@@ -228,7 +267,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
             await db.refresh(db_obj)
         except exc.SQLAlchemyError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=error
             )
         return db_obj
@@ -244,7 +283,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         await self.save_file(
             user=user,
             path=path,
-            file=file,
+            file=file
         )
         db_obj = await self.create_in_db(
             db=db,
@@ -272,7 +311,7 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
             self,
             db: AsyncSession,
             user: User,
-            path: str,
+            path: Path | str,
             compression_type: str
     ) -> File:
         file_path = Path(path)

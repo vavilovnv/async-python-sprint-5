@@ -37,6 +37,7 @@ class AppSettings(BaseSettings):
     redis_host: str = 'cache'
     redis_port: int = 6379
     echo_queries: bool = False
+    max_file_size: int = 268_435_456
 
     class Config:
         env_file = '.env'

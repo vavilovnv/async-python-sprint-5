@@ -22,7 +22,7 @@ services:
       - cache_data:/data
 
   file-server:
-    image: vavilovnv/file-server:v02.02.2023
+    image: vavilovnv/file-server:v03.02.2023
     ports:
       - ${FS_PORTS}
     env_file:
