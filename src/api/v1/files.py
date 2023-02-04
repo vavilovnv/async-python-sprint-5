@@ -35,11 +35,6 @@ async def upload_file(
     cache: RedisCacheBackend = Depends(redis_cache)
 ) -> FileInDB:
     logger.info('Uploading a new file.')
-    """
-    Я посмотрел доку (https://redis.io/commands/del/), там укаано, что
-    ключ игнорируется, если его не существует. Поэтому код с проверкой
-    наличия по ключу убрал.
-    """
     await cache.delete(f'files_{user.id}')
     keys = await get_key_by_pattern(cache, pattern=f'search-user:{user.id}*')
     for key in keys:

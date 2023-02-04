@@ -163,33 +163,6 @@ class RepositoryDBFile(FileRepository, Generic[ModelType, CreateSchemaType]):
         try:
             if not Path.exists(folder):
                 Path(folder).mkdir(parents=True, exist_ok=True)
-            """
-            Николай, ниже внес замечания по ограничению размера файла.
-            Надеюсь я верно понял задачу - мы ограничиваем загрузку файлов
-            больше предустановленного размера (я сделал 256 mb по умолчанию).
-            .
-            И еще напишу тут по поводу замечания по файлу .env_example, т.к.
-            не знаю, где это сделать, раз этот файл вам недоступен. Почему-то
-            на платформу Яндекс.практикум файл загружается в виде пустой папки
-            Во всяком случае я вижу его именно так. Но он есть в репозитарии
-            на github. Вот его содержимое:
-            PROJECT_HOST="127.0.0.1"
-            PROJECT_PORT=8080
-            DATABASE_DSN=postgresql+asyncpg://postgres:postgres@postgres-
-                            fastapi:5432/postgres
-            POSTGRES_USER=postgres
-            POSTGRES_PASSWORD=postgres
-            DB_PORTS="5432:5432"
-            CACHE_PORTS="6379:6379"
-            FS_PORTS="8080:8080"
-            WS_PORTS="80:80"
-            COMMANDS_FS="alembic upgrade head && python3 main.py"
-            MAX_FILE_SIZE=268435456
-            .
-            Дополнительно сейчас сделаю репозитарий публичным, чтобы можно было
-            увидеть этот файл:
-            https://github.com/vavilovnv/async-python-sprint-5
-            """
             file_size, max_size = 0, app_settings.max_file_size
             async with aiofiles.open(Path(folder, file.filename), 'wb') as f:
                 while content := await file.read(1024):
